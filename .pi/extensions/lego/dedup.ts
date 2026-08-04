@@ -2,8 +2,8 @@
  * Hook 3a — duplicate-symbol hard block.
  *
  * Pure logic: extract newly declared symbols from edit/write tool input,
- * compare their names against existing codegraph symbols (token dice
- * similarity, no embeddings in v1), and produce a block decision.
+ * compare their names against existing indexed symbols (token dice
+ * similarity — names only, deliberately), and produce a block decision.
  *
  * Escape hatch: a `lego:new(<reason>)` comment on the declaration line or the
  * line above lets the symbol through; the reason is kept for metrics.

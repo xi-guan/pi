@@ -46,7 +46,7 @@ d091a192  S0 脚手架 + codegraph CLI wrapper
 ```
 node --test ".pi/extensions/lego/*.test.ts"
 ```
-预期: `pass 60, fail 0` (v1 34 + v2 语义查重与 index hook 测试 + v3 sqlite 后端测试)。
+预期: `pass 52, fail 0` (v1 34 + v2 L2 语义 + v3 sqlite 后端; v4 删掉 8 个 embed 测试)。
 
 ### T2 加载与状态
 
@@ -54,7 +54,7 @@ node --test ".pi/extensions/lego/*.test.ts"
 pi -a          # 本 repo 内启动; -a = 信任项目本地文件
 /lego
 ```
-预期: 启动无 extension error; notify `lego v2: code index available — hooks active (<db 路径>); embedding index: ...`。
+预期: 启动无 extension error; notify `lego: code index available — hooks active (<db 路径>)`。
 注意: notify 只在 TUI 出现 (`ctx.hasUI`), `pi -p` headless 下 `/lego` 无任何输出, 只能证明 extension 加载不报错。
 
 ### T3 Inventory + Plan gate (环节 1/2)
@@ -143,6 +143,7 @@ T8 语义查重 (v1 T4 的换名版): 让模型用完全无关的名字重写已
 (如 "写 fixLineEndings 到 /tmp/x.ts, 把 CRLF/CR 转 LF"), 名字 Dice=0 不硬拦;
 预期 review 终审 FAIL 点名 normalizeToLF, metrics semanticFlags 非空。
 前置: `/lego embed` 已建索引 (无索引则只有 L2 信号; 叶子函数则完全静默放行)。
+> v4 起 L3 和 `/lego embed` 已删除, 此步只剩 L2 信号 —— 叶子函数会完全静默放行, 属预期。原因见文末 v4。
 
 ### v2 新增限制 / 观察点
 
@@ -253,3 +254,68 @@ callees 10 候选 1 次查完      0.272 ms   ← 取代了旧版 10 个子进�
   `EMBED_Z_THRESHOLD=3.0` 必须重新标定** —— 换之前先重跑 v2 那套校准 (60 真实函数 +
   5 换名重复 + 2 对照)
 - 上面 v1/v2/v2.1 各节的实测结论是在 codegraph 索引下得到的, 换后端后 T1-T8 值得重跑一遍
+
+## v4 — 删除 L3 embedding (2026-08-04)
+
+**别把它加回来, 先看这里的数据。**
+
+翻了本仓库全部 12 次真实 run 的 metrics, 语义查重这条链路 (L2 callee + L3 embedding
+→ 3b 复审 → 软打回) 的战绩是:
+
+```
+                blocked  reuse  reviewFail  semanticFlags
+07-05 18:59        0       1        0         0
+07-05 19:03        1       2        1         0
+07-06 07:59        3       1        1         0
+07-06 10:51        0       0        1         3   ← 头号嫌疑 restoreLineEndings (反向函数, 错)
+07-09 09:02        2       0        1         1
+07-09 09:07        0       0        1         2   ← 又是 restoreLineEndings
+07-09 09:34        0       0        1         2
+07-09 09:06        2       2        0         0
+08-04 13:05        2       2        0         0
+```
+
+两条完全反向的规律:
+
+- **语义层响过 4 次, 这 4 次的 reusedCalls 全是 0。** 每次 3b 都判了 FAIL, 每次模型都
+  没改代码 (v2.1 记录: 模型加了段注释解释为何不听, 代码原样)
+- **真正发生复用的几次, 语义层全程沉默, 全是 3a 名字硬拦的功劳**
+
+外加 4 次里有 2 次头号嫌疑是反向函数 —— L3 分不清 `normalizeToLF` (统一) 和
+`restoreLineEndings` (还原), 对 `fixLineEndings` 的 cosine 都是 0.919。
+
+结论: **硬拦改变模型行为, 软打回不改变。** 而语义信号按设计只能走软打回这条路
+(因为它不可靠, 不敢给它硬拦的权力) —— 这是个死结, 不是调参能解决的。
+
+### 删了什么
+
+```
+embed.ts / embed.test.ts        L3 全部实现 + 8 个单测
+index.ts 里的 L3 接线            loadEmbedding / listSymbolSpans / makeBodyReader
+/lego embed 子命令               构建向量索引
+.pi/lego-embeddings.json         79.5MB 派生数据
+自建 embedding HTTP 后端          不再需要 (bge-m3 服务可以关了)
+```
+
+`.pi/lego.local.json` (130B, 含 apiKey) 没动 —— 属凭证文件, 要删自己删。
+`.pi/.gitignore` 里 `lego-embeddings.json` 一行已移除。
+
+保留 L1 (名字/签名/doc 扩词召回) 和 L2 (共享 callee), 它们仍然把嫌疑名单喂给 3b 复审;
+成本几乎为零 (都是同一个 sqlite 查询), 留着不亏。
+
+删后复测 (2026-08-04, Qwen3.6-35B): `blocked=1, reusedCalls=2`, 行为不变。
+单测 60 → 52 (少掉 8 个 embed 测试)。
+
+### 如果以后想再上语义查重
+
+先解决这两件事, 否则重蹈覆辙:
+
+1. **反向函数分不清** —— 语义相似度对"做 X"和"撤销 X"给几乎相同的分。不解决这个,
+   语义信号就永远不敢给硬拦的权力
+2. **软打回没有强制力** —— 模型可以无视, 而且实测就是无视。要么想办法让 3b 的
+   FAIL 能真正拦住 (但那就要求语义信号precision 足够高, 见上一条), 要么承认它只是
+   给人看的 advisory, 不要期待它改变模型行为
+
+索引库里有现成的 6564 条 `nomic-embed-code` 向量 (768 维 int8, 编译进 binary, 不需要
+API key), 真要重做 L3 用它就行, 别再自建 HTTP 后端。但阈值必须重标 —— 原来的
+z ≥ 3.0 是对 bge-m3 调的, int8 量化后分布完全不同。
