@@ -9,21 +9,11 @@
  *
  * Degrades to no-ops when the codebase-memory-mcp index is missing.
  */
-import { readFileSync } from "node:fs";
-import { appendFile, mkdir, readFile, writeFile } from "node:fs/promises";
+import { appendFile, mkdir } from "node:fs/promises";
 import { join } from "node:path";
 import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
-import { Codegraph, indexPath, projectSlug } from "./codegraph.ts";
+import { Codegraph, indexPath } from "./codegraph.ts";
 import { type DedupResult, evaluateToolCall, findNearDuplicates } from "./dedup.ts";
-import {
-	buildEmbeddingIndex,
-	type EmbedConfig,
-	type EmbeddingIndex,
-	embedTexts,
-	parseEmbedConfig,
-	rankSuspects,
-	type SymbolSpan,
-} from "./embed.ts";
 import { buildInventory, extractKeywords, formatInventory, PLAN_GATE_RULES } from "./inventory.ts";
 import { applyVerdict, buildReviewPrompt, parseVerdict } from "./review.ts";
 import { findCalleeSuspects, formatSuspects, type SemanticSuspect } from "./semantic.ts";
@@ -41,9 +31,6 @@ export interface LegoState {
 
 const REVIEW_TIMEOUT_MS = 30_000;
 const REVIEW_DIFF_CAP = 4000;
-const EMBED_QUERY_TIMEOUT_MS = 3_000;
-const EMBED_CONFIG_FILE = "lego.local.json";
-const EMBED_INDEX_FILE = "lego-embeddings.json";
 
 /** New code introduced by an edit/write call, for semantic fingerprinting. */
 function addedTextOf(input: Record<string, unknown>): string {
@@ -57,105 +44,22 @@ function addedTextOf(input: Record<string, unknown>): string {
 		.join("\n");
 }
 
-/** function/method spans straight from the codebase-memory sqlite index; [] on any failure. */
-async function listSymbolSpans(cwd: string): Promise<SymbolSpan[]> {
-	try {
-		const { DatabaseSync } = await import("node:sqlite");
-		const db = new DatabaseSync(indexPath(cwd), { readOnly: true });
-		try {
-			const rows = db
-				.prepare(
-					`SELECT name, lower(label) AS kind, file_path AS filePath, start_line AS startLine, end_line AS endLine
-					 FROM nodes
-					 WHERE project = ?
-					   AND label IN ('Function', 'Method')
-					   AND end_line - start_line >= 2
-					   AND json_extract(properties, '$.is_test') IS NOT 1
-					 GROUP BY file_path, name, end_line`,
-				)
-				.all(projectSlug(cwd)) as unknown as SymbolSpan[];
-			return rows.filter((r) => typeof r.name === "string" && typeof r.filePath === "string");
-		} finally {
-			db.close();
-		}
-	} catch {
-		return [];
-	}
-}
-
-/** Body reader for index building, with a per-build file cache. */
-function makeBodyReader(cwd: string): (span: SymbolSpan) => string | undefined {
-	const fileCache = new Map<string, string[] | undefined>();
-	return (span) => {
-		if (!fileCache.has(span.filePath)) {
-			try {
-				fileCache.set(span.filePath, readFileSync(join(cwd, span.filePath), "utf8").split("\n"));
-			} catch {
-				fileCache.set(span.filePath, undefined);
-			}
-		}
-		const lines = fileCache.get(span.filePath);
-		return lines ? lines.slice(span.startLine - 1, span.endLine).join("\n") : undefined;
-	};
-}
-
 export default function (pi: ExtensionAPI) {
 	// the index is keyed by project root, so every hook refreshes this from ctx.cwd
 	let projectRoot = process.cwd();
 	const codegraph = new Codegraph(() => projectRoot);
 	const state: LegoState = { byToolCall: new Map(), blockedCount: 0, reviewFails: 0, semanticFlags: [] };
 
-	// L3 backend: config and index are both optional; missing → embedding no-ops
-	let embedConfig: EmbedConfig | undefined;
-	let embeddingIndex: EmbeddingIndex | undefined | null; // null = load attempted, absent
-	async function loadEmbedding(cwd: string): Promise<{ config: EmbedConfig; index: EmbeddingIndex } | undefined> {
-		if (typeof cwd !== "string" || !cwd) return undefined;
-		if (embedConfig === undefined) {
-			embedConfig = parseEmbedConfig(await readFile(join(cwd, ".pi", EMBED_CONFIG_FILE), "utf8").catch(() => undefined));
-		}
-		if (!embedConfig) return undefined;
-		if (embeddingIndex === undefined) {
-			try {
-				embeddingIndex = JSON.parse(await readFile(join(cwd, ".pi", EMBED_INDEX_FILE), "utf8")) as EmbeddingIndex;
-			} catch {
-				embeddingIndex = null;
-			}
-		}
-		if (!embeddingIndex || embeddingIndex.model !== embedConfig.model) return undefined;
-		return { config: embedConfig, index: embeddingIndex };
-	}
-
-	/** L2 + L3 recall for one reviewed edit; failures degrade to fewer suspects. */
-	async function collectSemanticSuspects(
-		dedup: DedupResult,
-		addedText: string,
-		cwd: string,
-	): Promise<SemanticSuspect[]> {
-		const suspects: SemanticSuspect[] = [];
+	/** L2 recall for one reviewed edit; failure degrades to no suspects. */
+	async function collectSemanticSuspects(dedup: DedupResult, addedText: string): Promise<SemanticSuspect[]> {
 		try {
-			suspects.push(
-				...(await findCalleeSuspects(addedText, dedup.newSymbols, dedup.candidates, dedup.path, (name) =>
-					codegraph.callees(name),
-				)),
+			return await findCalleeSuspects(addedText, dedup.newSymbols, dedup.candidates, dedup.path, (name) =>
+				codegraph.callees(name),
 			);
 		} catch {
-			// callee signal unavailable — embedding may still fire
+			// callee signal unavailable — review still runs, just without suspects
+			return [];
 		}
-		try {
-			const embedding = await loadEmbedding(cwd);
-			if (embedding && addedText.trim()) {
-				const vectors = await Promise.race([
-					embedTexts(embedding.config, [addedText], fetch),
-					new Promise<undefined>((resolve) => setTimeout(() => resolve(undefined), EMBED_QUERY_TIMEOUT_MS)),
-				]);
-				if (vectors) {
-					suspects.push(...rankSuspects(vectors[0], embedding.index, dedup.path, dedup.newSymbols[0]?.name ?? ""));
-				}
-			}
-		} catch {
-			// embedding backend down — deterministic signals already collected
-		}
-		return suspects;
 	}
 
 	// 1 + 2 — inject brick inventory and append plan-gate rules per turn
@@ -230,7 +134,7 @@ export default function (pi: ExtensionAPI) {
 				(s) => `- ${s.name} (${s.kind}) — ${s.filePath}:${s.startLine}${s.signature ? ` — ${s.signature}` : ""}`,
 			);
 
-			const suspects = await collectSemanticSuspects(dedup, addedTextOf(input), ctx.cwd);
+			const suspects = await collectSemanticSuspects(dedup, addedTextOf(input));
 			const suspectLines = formatSuspects(suspects);
 			state.semanticFlags.push(...suspectLines.map((line) => line.replace(/^- /, "")));
 
@@ -323,49 +227,14 @@ export default function (pi: ExtensionAPI) {
 	});
 
 	pi.registerCommand("lego", {
-		description: "Lego loop status (reuse-first hooks); `/lego embed` (re)builds the embedding index",
-		handler: async (args, ctx) => {
+		description: "Lego loop status (reuse-first hooks)",
+		handler: async (_args, ctx) => {
 			if (ctx?.cwd) projectRoot = ctx.cwd;
-			const notify = (message: string, level: "info" | "warning" = "info") => {
-				if (ctx.hasUI) ctx.ui.notify(message, level);
-			};
-
-			if (args?.trim() === "embed") {
-				embedConfig = undefined; // re-read config so key/model edits take effect
-				const config = parseEmbedConfig(
-					await readFile(join(ctx.cwd, ".pi", EMBED_CONFIG_FILE), "utf8").catch(() => undefined),
-				);
-				if (!config) {
-					notify(`lego embed: no usable .pi/${EMBED_CONFIG_FILE} (embedding.baseUrl/apiKey/model)`, "warning");
-					return;
-				}
-				const spans = await listSymbolSpans(ctx.cwd);
-				if (spans.length === 0) {
-					notify("lego embed: no symbol spans (code index missing?)", "warning");
-					return;
-				}
-				notify(`lego embed: embedding ${spans.length} symbols via ${config.model}…`);
-				try {
-					const index = await buildEmbeddingIndex(config, spans, makeBodyReader(ctx.cwd), fetch);
-					await writeFile(join(ctx.cwd, ".pi", EMBED_INDEX_FILE), JSON.stringify(index));
-					embedConfig = config;
-					embeddingIndex = index;
-					notify(`lego embed: indexed ${index.entries.length} symbol bodies → .pi/${EMBED_INDEX_FILE}`);
-				} catch (error) {
-					notify(`lego embed: failed — ${error instanceof Error ? error.message : String(error)}`, "warning");
-				}
-				return;
-			}
-
 			const ok = await codegraph.available();
 			const status = ok
 				? `code index available — hooks active (${indexPath(ctx.cwd)})`
 				: `code index MISSING — hooks are no-ops (index this repo with codebase-memory-mcp; expected ${indexPath(ctx.cwd)})`;
-			const embedding = await loadEmbedding(ctx.cwd);
-			const embedStatus = embedding
-				? `embedding index: ${embedding.index.entries.length} symbols (${embedding.index.model}, built ${embedding.index.builtAt})`
-				: "embedding index: absent — L3 off (`/lego embed` to build)";
-			notify(`lego v2: ${status}; ${embedStatus}`, ok ? "info" : "warning");
+			if (ctx.hasUI) ctx.ui.notify(`lego: ${status}`, ok ? "info" : "warning");
 		},
 	});
 }

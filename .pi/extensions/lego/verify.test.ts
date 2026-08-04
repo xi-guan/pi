@@ -84,7 +84,7 @@ test("aggregates run stats shape", () => {
 		reviewFails: 1,
 		reusedCalls: 4,
 		missedDuplicates: ["fresh ≈ freshen (src/x.ts:3)"],
-		semanticFlags: ["fresh ≈ freshen (src/x.ts:3) via embedding"],
+		semanticFlags: ["fresh ≈ freshen (src/x.ts:3) via callees"],
 	});
 	assert.equal(stats.edits, 3);
 	assert.deepEqual(stats.newSymbols, ["fresh"]);
@@ -93,5 +93,5 @@ test("aggregates run stats shape", () => {
 	assert.equal(stats.reusedCalls, 4);
 	assert.equal(stats.missedDuplicates.length, 1);
 	assert.equal(stats.escapes[0].reason, "demo");
-	assert.deepEqual(stats.semanticFlags, ["fresh ≈ freshen (src/x.ts:3) via embedding"]);
+	assert.deepEqual(stats.semanticFlags, ["fresh ≈ freshen (src/x.ts:3) via callees"]);
 });
