@@ -1,0 +1,141 @@
+<mxfile>
+  <diagram id="autolayout" name="Page-1">
+    <mxGraphModel dx="1874" dy="1139" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="0" pageScale="1" pageWidth="850" pageHeight="1100" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="title" parent="1" style="text;html=1;fillColor=none;strokeColor=none;fontColor=#1f2933;fontStyle=1;fontSize=18;align=left;verticalAlign=middle;" value="Lego loop — reuse-first coding agent (pi fork + codegraph)" vertex="1">
+          <mxGeometry height="30" width="560" as="geometry" />
+        </mxCell>
+        <mxCell id="group_0" parent="1" style="rounded=0;arcSize=6;whiteSpace=wrap;html=1;fillColor=none;strokeColor=#5a6b7a;fontColor=#5a6b7a;verticalAlign=top;align=left;spacingLeft=12;fontStyle=1;fontSize=14;dashed=1;glass=0;dashPattern=1 4;" value="Lego loop" vertex="1">
+          <mxGeometry height="800" width="560" x="20" y="150" as="geometry" />
+        </mxCell>
+        <mxCell id="task" parent="1" style="rounded=1;arcSize=50;whiteSpace=wrap;html=1;fillColor=#fbfbfc;strokeColor=#5a6b7a;strokeWidth=1.5;fontColor=#1f2933;fontSize=12;" value="任务" vertex="1">
+          <mxGeometry height="50" width="110" x="265" y="70" as="geometry" />
+        </mxCell>
+        <mxCell id="inv" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fbfbfc;strokeColor=#0f7b8a;strokeWidth=1.5;fontColor=#1f2933;fontSize=12;" value="1 Inventory&#xa;建积木清单" vertex="1">
+          <mxGeometry height="60" width="170" x="235" y="180" as="geometry" />
+        </mxCell>
+        <mxCell id="plan" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fbfbfc;strokeColor=#0f7b8a;strokeWidth=1.5;fontColor=#1f2933;fontSize=12;" value="2 Plan gate&#xa;REUSE / EXTEND / NEW" vertex="1">
+          <mxGeometry height="60" width="200" x="220" y="300" as="geometry" />
+        </mxCell>
+        <mxCell id="write" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fbfbfc;strokeColor=#0f7b8a;strokeWidth=1.5;fontColor=#1f2933;fontSize=12;" value="模型写 / 改代码" vertex="1">
+          <mxGeometry height="50" width="160" x="240" y="420" as="geometry" />
+        </mxCell>
+        <mxCell id="dup" parent="1" style="shape=rhombus;whiteSpace=wrap;html=1;fillColor=#fbfbfc;strokeColor=#b8860b;strokeWidth=1.5;fontColor=#1f2933;fontSize=12;" value="3a 新符号 ≈ 已有?" vertex="1">
+          <mxGeometry height="100" width="200" x="220" y="530" as="geometry" />
+        </mxCell>
+        <mxCell id="brick" parent="1" style="shape=rhombus;whiteSpace=wrap;html=1;fillColor=#fbfbfc;strokeColor=#b8860b;strokeWidth=1.5;fontColor=#1f2933;fontSize=12;" value="3b 新积木合格?&#xa;粒度 / 位置 / 接口" vertex="1">
+          <mxGeometry height="110" width="220" x="210" y="690" as="geometry" />
+        </mxCell>
+        <mxCell id="verify" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fbfbfc;strokeColor=#0f7b8a;strokeWidth=1.5;fontColor=#1f2933;fontSize=12;" value="4 Verify&#xa;reuse / 重复 统计" vertex="1">
+          <mxGeometry height="60" width="180" x="230" y="860" as="geometry" />
+        </mxCell>
+        <mxCell id="done" parent="1" style="rounded=1;arcSize=50;whiteSpace=wrap;html=1;fillColor=#fbfbfc;strokeColor=#1e9e54;strokeWidth=2;fontColor=#1f2933;fontSize=12;" value="交付 + reuse 指标" vertex="1">
+          <mxGeometry height="50" width="170" x="235" y="980" as="geometry" />
+        </mxCell>
+        <mxCell id="repo" parent="1" style="shape=cylinder;whiteSpace=wrap;html=1;fillColor=#fbfbfc;strokeColor=#2f6fd8;strokeWidth=1.5;fontColor=#1f2933;fontSize=12;" value="存量代码库" vertex="1">
+          <mxGeometry height="70" width="150" x="665" y="250" as="geometry" />
+        </mxCell>
+        <mxCell id="cg" parent="1" style="shape=cylinder;whiteSpace=wrap;html=1;fillColor=#fbfbfc;strokeColor=#2f6fd8;strokeWidth=1.5;fontColor=#1f2933;fontSize=12;" value="codegraph 索引&#xa;符号 / 调用 / 影响面" vertex="1">
+          <mxGeometry height="110" width="180" x="650" y="450" as="geometry" />
+        </mxCell>
+        <mxCell id="e0" edge="1" parent="1" source="task" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#8895a3;strokeWidth=1.5;endArrow=block;endFill=1;fontSize=12;labelBackgroundColor=#ffffff;" target="inv" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e1" edge="1" parent="1" source="inv" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#8895a3;strokeWidth=1.5;endArrow=block;endFill=1;fontSize=12;labelBackgroundColor=#ffffff;" target="plan" value="积木清单">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="48" as="offset" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="e2" edge="1" parent="1" source="plan" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#8895a3;strokeWidth=1.5;endArrow=block;endFill=1;fontSize=12;labelBackgroundColor=#ffffff;" target="write" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e3" edge="1" parent="1" source="write" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#8895a3;strokeWidth=1.5;endArrow=block;endFill=1;fontSize=12;labelBackgroundColor=#ffffff;" target="dup" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e4" edge="1" parent="1" source="dup" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#8895a3;strokeWidth=1.5;endArrow=block;endFill=1;fontSize=12;labelBackgroundColor=#ffffff;" target="brick" value="无重复">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="40" as="offset" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="e5" edge="1" parent="1" source="dup" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#aeb6bf;strokeWidth=1.5;endArrow=block;endFill=1;fontSize=12;labelBackgroundColor=#ffffff;dashed=1;exitX=0;exitY=0.5;" target="write" value="命中: 拦回">
+          <mxGeometry relative="1" x="-0.8" as="geometry">
+            <Array as="points">
+              <mxPoint x="90" y="580" />
+              <mxPoint x="90" y="458" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="e6" edge="1" parent="1" source="brick" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#8895a3;strokeWidth=1.5;endArrow=block;endFill=1;fontSize=12;labelBackgroundColor=#ffffff;" target="verify" value="合格">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="35" as="offset" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="e7" edge="1" parent="1" source="brick" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#aeb6bf;strokeWidth=1.5;endArrow=block;endFill=1;fontSize=12;labelBackgroundColor=#ffffff;dashed=1;exitX=0;exitY=0.5;entryX=0;entryY=0.25;entryDx=0;entryDy=0;" target="write" value="不合格: 打回">
+          <mxGeometry relative="1" x="-0.85" as="geometry">
+            <Array as="points">
+              <mxPoint x="60" y="745" />
+              <mxPoint x="60" y="433" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="e8" edge="1" parent="1" source="verify" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#8895a3;strokeWidth=1.5;endArrow=block;endFill=1;fontSize=12;labelBackgroundColor=#ffffff;" target="done" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e9" edge="1" parent="1" source="repo" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#8895a3;strokeWidth=1.5;endArrow=block;endFill=1;fontSize=12;labelBackgroundColor=#ffffff;exitX=0.5;exitY=1;entryX=0.5;entryY=0;" target="cg" value="增量索引">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="48" as="offset" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="e10" edge="1" parent="1" source="cg" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#8895a3;strokeWidth=1.5;endArrow=block;endFill=1;fontSize=12;labelBackgroundColor=#ffffff;exitX=0;exitY=0.25;entryX=1;entryY=0.5;" target="inv" value="查符号">
+          <mxGeometry relative="1" x="-0.5317" as="geometry">
+            <mxPoint as="offset" />
+            <Array as="points">
+              <mxPoint x="490" y="478" />
+              <mxPoint x="490" y="210" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="e11" edge="1" parent="1" source="cg" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#8895a3;strokeWidth=1.5;endArrow=block;endFill=1;fontSize=12;labelBackgroundColor=#ffffff;entryX=1;entryY=0.5;" target="dup" value="近似符号">
+          <mxGeometry relative="1" x="0.2959" as="geometry">
+            <mxPoint as="offset" />
+            <Array as="points">
+              <mxPoint x="709" y="580" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="e12" edge="1" parent="1" source="cg" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#8895a3;strokeWidth=1.5;endArrow=block;endFill=1;fontSize=12;labelBackgroundColor=#ffffff;exitX=0.5;exitY=1;entryX=1;entryY=0.5;exitDx=0;exitDy=0;" target="brick" value="同类积木 / 惯例">
+          <mxGeometry relative="1" x="0.3" as="geometry">
+            <Array as="points">
+              <mxPoint x="740" y="745" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="e13" edge="1" parent="1" source="done" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#8895a3;strokeWidth=1.5;endArrow=block;endFill=1;fontSize=12;labelBackgroundColor=#ffffff;exitX=1;exitY=0.5;entryX=1;entryY=0.5;" target="repo" value="新积木入库 = 明天的 REUSE">
+          <mxGeometry relative="1" x="-0.75" as="geometry">
+            <Array as="points">
+              <mxPoint x="900" y="1005" />
+              <mxPoint x="900" y="285" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="notes1" parent="1" style="text;html=1;fillColor=none;strokeColor=none;fontColor=#5a6b7a;fontSize=18;align=left;verticalAlign=middle;" value="• 实线 主流程 · 虚线 拦回返工 · 圆柱 数据" vertex="1">
+          <mxGeometry height="18" width="600" x="990" y="140" as="geometry" />
+        </mxCell>
+        <mxCell id="notes2" parent="1" style="text;html=1;fillColor=none;strokeColor=none;fontColor=#5a6b7a;fontSize=18;align=left;verticalAlign=middle;" value="• 治什么: 1 幻觉 API · 2 无视抽象 / 错层 · 3a 重复轮子 · 3b 不可复用" vertex="1">
+          <mxGeometry height="18" width="600" x="990" y="190" as="geometry" />
+        </mxCell>
+        <mxCell id="notes3" parent="1" style="text;html=1;fillColor=none;strokeColor=none;fontColor=#5a6b7a;fontSize=18;align=left;verticalAlign=middle;" value="• 强制: 3a 硬拦 (相似度) · 3b 软拦 (review) · NEW 须理由" vertex="1">
+          <mxGeometry height="18" width="600" x="990" y="240" as="geometry" />
+        </mxCell>
+        <mxCell id="notes4" parent="1" style="text;html=1;fillColor=none;strokeColor=none;fontColor=#5a6b7a;fontSize=18;align=left;verticalAlign=middle;" value="• pi 挂点: 1/2 context 注入 · 3a edit 前置 · 3b post-edit · 4 diff" vertex="1">
+          <mxGeometry height="18" width="600" x="990" y="290" as="geometry" />
+        </mxCell>
+        <mxCell id="notes5" parent="1" style="text;html=1;fillColor=none;strokeColor=none;fontColor=#5a6b7a;fontSize=18;align=left;verticalAlign=middle;" value="• 飞轮: 新积木入库 → 明天的 REUSE · 统计 = 评测数据" vertex="1">
+          <mxGeometry height="18" width="600" x="990" y="340" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>
