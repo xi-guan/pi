@@ -109,6 +109,11 @@ function isTruthyEnvFlag(value: string | undefined): boolean {
 	return value === "1" || value.toLowerCase() === "true" || value.toLowerCase() === "yes";
 }
 
+function isFalsyEnvFlag(value: string | undefined): boolean {
+	if (!value) return false;
+	return value === "0" || value.toLowerCase() === "false" || value.toLowerCase() === "no";
+}
+
 function resolveAppMode(parsed: Args, stdinIsTTY: boolean, stdoutIsTTY: boolean): AppMode {
 	if (parsed.mode === "rpc") {
 		return "rpc";
@@ -576,10 +581,14 @@ export async function main(args: string[], options?: MainOptions) {
 	// Commands and startup selectors can load user-authored themes before runtime creation.
 	setThemeJsonValidator(validateThemeJson);
 	const extensionFactories = [...builtInExtensions, ...(options?.extensionFactories ?? [])];
-	const offlineMode = args.includes("--offline") || isTruthyEnvFlag(process.env.PI_OFFLINE);
+	// fork: offline is ON by default; explicit PI_OFFLINE=0/false/no opts out
+	const offlineMode = args.includes("--offline") || !isFalsyEnvFlag(process.env.PI_OFFLINE);
 	if (offlineMode) {
 		process.env.PI_OFFLINE = "1";
 		process.env.PI_SKIP_VERSION_CHECK = "1";
+	} else {
+		// downstream uses Boolean(env), so "0" would be truthy — clear it
+		delete process.env.PI_OFFLINE;
 	}
 
 	if (await runAuthCommand(args)) {
