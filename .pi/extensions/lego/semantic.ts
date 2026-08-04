@@ -3,8 +3,8 @@
  *
  * Deterministic signals only surface SUSPECTS for the review prompt; the
  * review LLM makes the final duplicate call, so thresholds favor precision.
- * L2: shared-callee fingerprint (structure). L3: embedding similarity lives
- * in embed.ts and produces the same SemanticSuspect shape.
+ * L2: shared-callee fingerprint (structure). An embedding layer (L3) was
+ * removed 2026-08-04 -- see docs/lego-loop-handover.md for the measurements.
  */
 import type { CgSymbol } from "./codegraph.ts";
 import { type Decl, isSameFile } from "./dedup.ts";
@@ -13,7 +13,7 @@ import { extractCallNames } from "./verify.ts";
 export interface SemanticSuspect {
 	declName: string;
 	match: CgSymbol;
-	via: "callees" | "embedding";
+	via: "callees";
 	score: number;
 	detail?: string;
 }
