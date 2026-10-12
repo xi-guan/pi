@@ -68,3 +68,25 @@ test("review prompt omits the duplication criterion without suspects", () => {
 	assert.ok(!prompt.includes("Suspected semantic duplicates"));
 	assert.ok(!/duplication/i.test(prompt));
 });
+
+test("review prompt lists matched records and adds the rejected-approach criterion", () => {
+	const noteLines = ["- soft-bounce-has-no-force — hard blocks change behavior, soft bounces do not"];
+	const prompt = buildReviewPrompt(["rankSuspects"], "+export function rankSuspects() {}", [], [], noteLines);
+	assert.match(prompt, /Previously rejected approaches \(\.pi\/lego-notes\)/);
+	assert.match(prompt, /soft-bounce-has-no-force/);
+	assert.match(prompt, /5\. previously rejected approach/);
+	assert.match(prompt, /cite the record/i);
+});
+
+test("rejected-approach criterion is numbered after duplication when both fire", () => {
+	const prompt = buildReviewPrompt(["x"], "+x", [], ["- x ≈ y (a.ts:1) via callees"], ["- n — s"]);
+	assert.match(prompt, /5\. duplication/);
+	assert.match(prompt, /6\. previously rejected approach/);
+	assert.match(prompt, /Judge ONLY these 6 criteria/);
+});
+
+test("review prompt omits the rejected-approach criterion without records", () => {
+	const prompt = buildReviewPrompt(["x"], "+x", []);
+	assert.ok(!prompt.includes("Previously rejected approaches"));
+	assert.ok(!/previously rejected approach/i.test(prompt));
+});
