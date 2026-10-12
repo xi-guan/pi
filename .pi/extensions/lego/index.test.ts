@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { mkdtemp } from "node:fs/promises";
+import { mkdir, mkdtemp, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { DatabaseSync } from "node:sqlite";
@@ -131,6 +131,50 @@ async function runWriteThenEnd(
 	};
 	return { blocked, stats };
 }
+
+const NOTE_FILE = [
+	"---",
+	"name: no-reliable-function-overlap-detection",
+	"status: rejected",
+	"triggers: [embedding, cosine]",
+	"summary: No reliable way to tell whether two functions overlap.",
+	"---",
+	"",
+	"正文",
+].join("\n");
+
+/** Run hook 1+2 against a cwd whose .pi/lego-notes holds one record. */
+async function runBeforeAgentStart(prompt: string, indexed: boolean) {
+	const cwd = await mkdtemp(join(tmpdir(), "lego-test-"));
+	await mkdir(join(cwd, ".pi", "lego-notes"), { recursive: true });
+	await writeFile(join(cwd, ".pi", "lego-notes", "rec.md"), NOTE_FILE);
+	if (indexed) await makeIndexFile(cwd, NORMALIZE_TO_LF);
+	else process.env.LEGO_INDEX_DB = join(tmpdir(), "lego-absent", "nope.db");
+	const stub = createPiStub();
+	await legoExtension(stub.api as never);
+	return (await stub.handlers.get("before_agent_start")!({ prompt, systemPrompt: "base" }, { cwd } as never)) as
+		| { systemPrompt?: string; message?: { content: string } }
+		| undefined;
+}
+
+test("before_agent_start appends matched records to the injected context", async () => {
+	const result = await runBeforeAgentStart("should we add an embedding layer to normalizeToLF?", true);
+	assert.ok(result?.message);
+	assert.match(result.message.content, /no-reliable-function-overlap-detection/);
+	assert.match(result.message.content, /No reliable way to tell/);
+	assert.match(result.systemPrompt ?? "", /Lego plan gate/);
+});
+
+test("before_agent_start injects records even when the index is missing", async () => {
+	const result = await runBeforeAgentStart("cosine similarity again?", false);
+	assert.match(result?.message?.content ?? "", /no-reliable-function-overlap-detection/);
+	assert.equal(result?.systemPrompt, undefined, "no index means no plan gate");
+});
+
+test("before_agent_start stays silent when no record trigger matches", async () => {
+	const result = await runBeforeAgentStart("rename a local variable", false);
+	assert.equal(result, undefined);
+});
 
 test("agent_end does not re-report an escaped duplicate as missed", async () => {
 	const cwd = await mkdtemp(join(tmpdir(), "lego-test-"));

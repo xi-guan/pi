@@ -46,6 +46,7 @@ export function buildReviewPrompt(
 	diff: string,
 	neighborLines: string[],
 	suspectLines: string[] = [],
+	noteLines: string[] = [],
 ): string {
 	const criteria = [
 		"1. granularity — single responsibility, reasonable size, not a god function",
@@ -56,6 +57,11 @@ export function buildReviewPrompt(
 	if (suspectLines.length > 0) {
 		criteria.push(
 			"5. duplication — deterministic recall flagged the suspects below; if the new symbol re-implements one of them, FAIL and name the symbol to reuse",
+		);
+	}
+	if (noteLines.length > 0) {
+		criteria.push(
+			`${criteria.length + 1}. previously rejected approach — the records below were measured and rejected; if this change re-attempts one, FAIL and cite the record`,
 		);
 	}
 	return [
@@ -69,6 +75,7 @@ export function buildReviewPrompt(
 		"```",
 		neighborLines.length > 0 ? ["Existing neighbor bricks for comparison:", ...neighborLines, ""].join("\n") : "",
 		suspectLines.length > 0 ? ["Suspected semantic duplicates:", ...suspectLines, ""].join("\n") : "",
+		noteLines.length > 0 ? ["Previously rejected approaches (.pi/lego-notes):", ...noteLines, ""].join("\n") : "",
 		`Judge ONLY these ${criteria.length} criteria:`,
 		...criteria,
 		"",
