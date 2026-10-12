@@ -65,6 +65,8 @@ export default function (pi: ExtensionAPI) {
 
 	// 1 + 2 — inject brick inventory and append plan-gate rules per turn
 	pi.on("before_agent_start", async (event, ctx) => {
+		// idle custom-message runs carry no prompt to mine; they never reached this hook before 1.x
+		if (event.messageType !== "user") return undefined;
 		try {
 			if (ctx?.cwd) projectRoot = ctx.cwd;
 			const noteLines = formatNoteLines(matchNotes(event.prompt, await loadNotes(projectRoot)));

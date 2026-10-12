@@ -144,7 +144,7 @@ const NOTE_FILE = [
 ].join("\n");
 
 /** Run hook 1+2 against a cwd whose .pi/lego-notes holds one record. */
-async function runBeforeAgentStart(prompt: string, indexed: boolean) {
+async function runBeforeAgentStart(prompt: string, indexed: boolean, messageType: "user" | "custom" = "user") {
 	const cwd = await mkdtemp(join(tmpdir(), "lego-test-"));
 	await mkdir(join(cwd, ".pi", "lego-notes"), { recursive: true });
 	await writeFile(join(cwd, ".pi", "lego-notes", "rec.md"), NOTE_FILE);
@@ -152,7 +152,11 @@ async function runBeforeAgentStart(prompt: string, indexed: boolean) {
 	else process.env.LEGO_INDEX_DB = join(tmpdir(), "lego-absent", "nope.db");
 	const stub = createPiStub();
 	await legoExtension(stub.api as never);
-	return (await stub.handlers.get("before_agent_start")!({ prompt, systemPrompt: "base" }, { cwd } as never)) as
+	const event =
+		messageType === "user"
+			? { messageType, prompt, systemPrompt: "base" }
+			: { messageType, message: { role: "custom", content: prompt }, systemPrompt: "base" };
+	return (await stub.handlers.get("before_agent_start")!(event, { cwd } as never)) as
 		| { systemPrompt?: string; message?: { content: string } }
 		| undefined;
 }
@@ -173,6 +177,11 @@ test("before_agent_start injects records even when the index is missing", async 
 
 test("before_agent_start stays silent when no record trigger matches", async () => {
 	const result = await runBeforeAgentStart("rename a local variable", false);
+	assert.equal(result, undefined);
+});
+
+test("before_agent_start skips idle custom-message runs", async () => {
+	const result = await runBeforeAgentStart("should we add an embedding layer to normalizeToLF?", true, "custom");
 	assert.equal(result, undefined);
 });
 
