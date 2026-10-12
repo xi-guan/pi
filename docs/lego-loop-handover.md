@@ -259,6 +259,8 @@ callees 10 候选 1 次查完      0.272 ms   ← 取代了旧版 10 个子进�
 
 **别把它加回来, 先看这里的数据。**
 
+> 本节两条负面结论已抽成机器可检索的记录: `.pi/lego-notes/no-reliable-function-overlap-detection.md` 与 `soft-bounce-has-no-force.md`, hook 1/2 和 3b 会按触发词自动注入。
+
 翻了本仓库全部 12 次真实 run 的 metrics, 语义查重这条链路 (L2 callee + L3 embedding
 → 3b 复审 → 软打回) 的战绩是:
 

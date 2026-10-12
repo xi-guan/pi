@@ -15,6 +15,7 @@ import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
 import { Codegraph, indexPath } from "./codegraph.ts";
 import { type DedupResult, evaluateToolCall, findNearDuplicates } from "./dedup.ts";
 import { buildInventory, extractKeywords, formatInventory, PLAN_GATE_RULES } from "./inventory.ts";
+import { formatNoteLines, formatNotesBlock, loadNotes, matchNotes } from "./notes.ts";
 import { applyVerdict, buildReviewPrompt, parseVerdict } from "./review.ts";
 import { findCalleeSuspects, formatSuspects, type SemanticSuspect } from "./semantic.ts";
 import { aggregateStats, collectRunData, countReusedCalls } from "./verify.ts";
@@ -66,18 +67,26 @@ export default function (pi: ExtensionAPI) {
 	pi.on("before_agent_start", async (event, ctx) => {
 		try {
 			if (ctx?.cwd) projectRoot = ctx.cwd;
-			if (!(await codegraph.available())) return undefined;
+			const noteLines = formatNoteLines(matchNotes(event.prompt, await loadNotes(projectRoot)));
+			// records are independent of the index, so they still ship when the hooks are no-ops
+			if (!(await codegraph.available())) {
+				if (noteLines.length === 0) return undefined;
+				return { message: { customType: "lego-notes", content: formatNotesBlock(noteLines), display: true } };
+			}
 			const systemPrompt = event.systemPrompt + PLAN_GATE_RULES;
 			const keywords = extractKeywords(event.prompt);
-			if (keywords.length === 0) return { systemPrompt };
 			const results = await Promise.all(keywords.map((keyword) => codegraph.query(keyword, 8)));
 			const symbols = buildInventory(results);
-			if (symbols.length === 0) return { systemPrompt };
+			const sections = [
+				symbols.length > 0 ? formatInventory(symbols) : "",
+				noteLines.length > 0 ? formatNotesBlock(noteLines) : "",
+			].filter((section) => section.length > 0);
+			if (sections.length === 0) return { systemPrompt };
 			return {
 				systemPrompt,
 				message: {
 					customType: "lego-inventory",
-					content: formatInventory(symbols),
+					content: sections.join("\n\n"),
 					display: true,
 				},
 			};
@@ -134,9 +143,13 @@ export default function (pi: ExtensionAPI) {
 				(s) => `- ${s.name} (${s.kind}) — ${s.filePath}:${s.startLine}${s.signature ? ` — ${s.signature}` : ""}`,
 			);
 
-			const suspects = await collectSemanticSuspects(dedup, addedTextOf(input));
+			const addedText = addedTextOf(input);
+			const suspects = await collectSemanticSuspects(dedup, addedText);
 			const suspectLines = formatSuspects(suspects);
 			state.semanticFlags.push(...suspectLines.map((line) => line.replace(/^- /, "")));
+
+			const notes = await loadNotes(projectRoot);
+			const noteLines = formatNoteLines(matchNotes([...names, addedText].join("\n"), notes));
 
 			const { complete } = await import("@earendil-works/pi-ai/compat");
 			const response = await Promise.race([
@@ -146,7 +159,9 @@ export default function (pi: ExtensionAPI) {
 						messages: [
 							{
 								role: "user" as const,
-								content: [{ type: "text" as const, text: buildReviewPrompt(names, diff, neighborLines, suspectLines) }],
+								content: [
+									{ type: "text" as const, text: buildReviewPrompt(names, diff, neighborLines, suspectLines, noteLines) },
+								],
 								timestamp: Date.now(),
 							},
 						],
